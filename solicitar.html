@@ -21,6 +21,7 @@
     button{border:0;background:#e5ad45;color:#1d2a38;padding:13px 18px;border-radius:10px;font:700 14px "DM Sans",sans-serif;cursor:pointer}
     button:disabled{opacity:.6;cursor:wait}.notice{display:none;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.5;margin-bottom:15px}
     .notice.error{display:block;background:#fff1ef;color:#a53c30;border:1px solid #f3d0ca}.notice.success{display:block;background:#eef8f1;color:#24633c;border:1px solid #cfe8d6}
+    .success-popup{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:#173f2b;color:#fff;padding:13px 20px;border-radius:10px;box-shadow:0 8px 28px #102d4f33;font-size:13px;font-weight:700;opacity:0;visibility:hidden;transition:opacity .2s ease,transform .2s ease;z-index:1000;text-align:center;width:max-content;max-width:calc(100% - 32px)}.success-popup.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
     footer{text-align:center;color:#8a97a5;font-size:11px;padding:0 15px 24px}
     @media(max-width:560px){header{padding:18px}.logo{width:62px;height:62px}main{margin:20px auto;padding:0 12px 35px}.card{padding:18px}.dates{grid-template-columns:1fr}}
   </style>
@@ -48,6 +49,7 @@
       </form>
     </section>
   </main>
+  <div id="successPopup" class="success-popup" role="status" aria-live="polite">✓ Solicitação criada com sucesso</div>
   <footer>Comunidade Batista Oceânica · Ministério de Comunicação</footer>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -78,6 +80,8 @@
     });
     const form = document.getElementById("requestForm");
     const notice = document.getElementById("notice");
+    const successPopup = document.getElementById("successPopup");
+    let popupTimer;
     document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA");
     form.addEventListener("submit", async event => {
       event.preventDefault();
@@ -103,8 +107,11 @@
         form.reset();
         document.getElementById("fileName").textContent = "";
         document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA");
-        notice.className = "notice success";
-        notice.textContent = "Solicitação enviada com sucesso! A equipe de Comunicação dará andamento ao pedido.";
+        notice.className = "notice";
+        notice.textContent = "";
+        successPopup.classList.add("show");
+        clearTimeout(popupTimer);
+        popupTimer = setTimeout(() => successPopup.classList.remove("show"), 3500);
       } catch (error) {
         if (uploadedPath) { try { await deleteObject(storageRef(storage, uploadedPath)); } catch (_) {} }
         notice.className = "notice error";
