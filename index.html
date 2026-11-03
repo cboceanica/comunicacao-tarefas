@@ -118,13 +118,33 @@
     const form = document.getElementById("taskForm");
     const notice = document.getElementById("notice");
     let tasks = [];
+    let editingTaskId = null;
 
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const dateBR = value => { if (!value) return "Não informada"; const [y,m,d] = value.split("-"); return [d,m,y].join("/"); };
     function showNotice(message, type="info") { notice.textContent = message; notice.className = "notice " + type; }
     function hideNotice() { notice.textContent = ""; notice.className = "notice"; }
-    function openModal() { hideNotice(); form.reset(); document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA"); modal.classList.add("open"); document.getElementById("requester").focus(); }
-    function closeModal() { modal.classList.remove("open"); }
+    function openModal(task = null) {
+      hideNotice();
+      form.reset();
+      editingTaskId = task?.id || null;
+      renderTeam();
+      document.getElementById("modalTitle").textContent = task ? "Editar solicitação" : "Nova solicitação de arte";
+      document.getElementById("submitTask").textContent = task ? "Salvar alterações" : "Enviar solicitação";
+      if (task) {
+        document.getElementById("requester").value = task.requester || "";
+        document.getElementById("title").value = task.title || "";
+        document.getElementById("description").value = task.description || "";
+        document.getElementById("servo").value = task.servo || "";
+        document.getElementById("requestDate").value = task.requestDate || "";
+        document.getElementById("eventDate").value = task.eventDate || "";
+      } else {
+        document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA");
+      }
+      modal.classList.add("open");
+      document.getElementById("requester").focus();
+    }
+    function closeModal() { modal.classList.remove("open"); editingTaskId = null; }
     function renderTeam() {
       const select = document.getElementById("servo");
       const current = select.value;
@@ -176,10 +196,15 @@
               <select class="status-select" aria-label="Alterar status de ${escapeHtml(t.title)}" data-id="${escapeHtml(t.id)}">
                 ${statuses.map(s => `<option value="${s}" ${s === status ? "selected" : ""}>${s}</option>`).join("")}
               </select>
+              <button class="edit-task" type="button" title="Editar solicitação" aria-label="Editar solicitação: ${escapeHtml(t.title)}" data-id="${escapeHtml(t.id)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
               <button class="delete-task" type="button" title="Excluir solicitação" aria-label="Excluir solicitação: ${escapeHtml(t.title)}" data-id="${escapeHtml(t.id)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg></button>
             </div>
           </article>`).join("");
       });
+      document.querySelectorAll(".edit-task").forEach(button => button.addEventListener("click", e => {
+        const task = tasks.find(item => item.id === e.currentTarget.dataset.id);
+        if (task) openModal(task);
+      }));
       document.querySelectorAll(".delete-task").forEach(button => button.addEventListener("click", async e => {
         const id = e.currentTarget.dataset.id;
         const task = tasks.find(item => item.id === id);
@@ -200,11 +225,18 @@
       submit.disabled = true; submit.textContent = "Enviando...";
       const data = Object.fromEntries(new FormData(form).entries());
       try {
-        await addDoc(tasksRef, { ...data, status: "Aberto", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        if (editingTaskId) {
+          await updateDoc(doc(db, "comunicacao-tarefas", editingTaskId), { ...data, updatedAt: serverTimestamp() });
+        } else {
+          await addDoc(tasksRef, { ...data, status: "Aberto", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        }
         closeModal(); form.reset(); hideNotice();
       } catch (err) {
-        showNotice("A solicitação não foi salva. É necessário liberar a leitura e a gravação da coleção comunicacao-tarefas nas regras do Firestore.", "error");
-      } finally { submit.disabled = false; submit.textContent = "Enviar solicitação"; }
+        showNotice("A solicitação não foi salva. Verifique as regras de leitura e gravação da coleção comunicacao-tarefas no Firestore.", "error");
+      } finally {
+        submit.disabled = false;
+        submit.textContent = editingTaskId ? "Salvar alterações" : "Enviar solicitação";
+      }
     });
 
     onSnapshot(teamDoc, async snapshot => {
