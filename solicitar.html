@@ -82,7 +82,14 @@
     const notice = document.getElementById("notice");
     const successPopup = document.getElementById("successPopup");
     let popupTimer;
-    document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA");
+    function todayISO() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    document.getElementById("requestDate").value = todayISO();
     form.addEventListener("submit", async event => {
       event.preventDefault();
       const button = document.getElementById("submitRequest");
@@ -106,7 +113,7 @@
         await setDoc(taskRef, taskData);
         form.reset();
         document.getElementById("fileName").textContent = "";
-        document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA");
+        document.getElementById("requestDate").value = todayISO();
         notice.className = "notice";
         notice.textContent = "";
         successPopup.classList.add("show");
