@@ -168,7 +168,7 @@
       input.value = "";
     });
     document.getElementById("newMemberName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("addMember").click(); } });
-    document.getElementById("newTask").addEventListener("click", openModal);
+    document.getElementById("newTask").addEventListener("click", () => openModal());
     document.getElementById("closeModal").addEventListener("click", closeModal);
     document.getElementById("cancel").addEventListener("click", closeModal);
     modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
