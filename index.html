@@ -33,7 +33,7 @@
     .task-meta span{display:flex;align-items:center;gap:6px}.task-meta b{color:#35475a;font-weight:700}
     .task-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px}
     .requester{font-size:11px;color:#536579;font-weight:700;overflow-wrap:anywhere}
-    .status-select{max-width:100%;border:1px solid #dce3ea;border-radius:7px;padding:7px 22px 7px 8px;background:#f8fafc;color:#26394d;font:600 11px inherit}
+    .status-select{max-width:100%;border:1px solid #dce3ea;border-radius:7px;padding:7px 22px 7px 8px;background:#f8fafc;color:#26394d;font:600 11px inherit}.delete-task{width:30px;height:30px;flex:none;display:grid;place-items:center;border:1px solid #f0d4d1;border-radius:8px;background:#fff7f6;color:#b34a40;cursor:pointer}.delete-task:hover{background:#fee9e6}.delete-task:disabled{opacity:.5;cursor:wait}.task-footer{flex-wrap:wrap}
     .empty{color:#8290a0;font-size:12px;text-align:center;padding:24px 8px}
     .notice{display:none;margin:0 0 16px;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.5}.notice.error{display:block;background:#fff1ef;color:#a53c30;border:1px solid #f3d0ca}.notice.info{display:block;background:#fff8e9;color:#76551a;border:1px solid #f0dfb8}
     .modal-backdrop{position:fixed;inset:0;background:#0b1d30a8;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}.modal-backdrop.open{display:flex}
@@ -95,7 +95,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, deleteDoc, doc, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAw9KvbSY55d9x6hPOhyHh10BV2Z1k5vV8",
@@ -176,9 +176,18 @@
               <select class="status-select" aria-label="Alterar status de ${escapeHtml(t.title)}" data-id="${escapeHtml(t.id)}">
                 ${statuses.map(s => `<option value="${s}" ${s === status ? "selected" : ""}>${s}</option>`).join("")}
               </select>
+              <button class="delete-task" type="button" title="Excluir solicitação" aria-label="Excluir solicitação: ${escapeHtml(t.title)}" data-id="${escapeHtml(t.id)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg></button>
             </div>
           </article>`).join("");
       });
+      document.querySelectorAll(".delete-task").forEach(button => button.addEventListener("click", async e => {
+        const id = e.currentTarget.dataset.id;
+        const task = tasks.find(item => item.id === id);
+        if (!confirm(`Tem certeza de que deseja excluir a solicitação "${task?.title || "sem título"}"? Essa ação não poderá ser desfeita.`)) return;
+        e.currentTarget.disabled = true;
+        try { await deleteDoc(doc(db, "comunicacao-tarefas", id)); }
+        catch (err) { showNotice("Não foi possível excluir a solicitação. Verifique as regras do Firestore.", "error"); e.currentTarget.disabled = false; }
+      }));
       document.querySelectorAll(".status-select").forEach(select => select.addEventListener("change", async e => {
         try { await updateDoc(doc(db, "comunicacao-tarefas", e.target.dataset.id), { status: e.target.value, updatedAt: serverTimestamp() }); }
         catch (err) { showNotice("Não foi possível atualizar o status. Verifique as regras de acesso do Firestore.", "error"); }
