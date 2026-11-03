@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102d4f">
+  <title>Solicitar arte | CBO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f3f6f9;color:#172536;font-family:"DM Sans",Arial,sans-serif}
+    header{background:linear-gradient(120deg,#102d4f,#1c527c);color:#fff;padding:24px max(20px,calc((100% - 760px)/2));display:flex;align-items:center;gap:16px}
+    .logo{width:58px;height:58px;object-fit:contain;background:#fff;border-radius:13px;padding:5px}.brand small{display:block;text-transform:uppercase;letter-spacing:2px;font-size:10px;font-weight:800;color:#d7e5f2;margin-bottom:4px}
+    h1{font-size:clamp(22px,4vw,30px);margin:0;font-weight:800}.brand p{margin:6px 0 0;color:#dbe7f1;font-size:13px}
+    main{max-width:760px;margin:32px auto;padding:0 18px 45px}.card{background:#fff;border:1px solid #e1e7ed;border-radius:15px;padding:24px;box-shadow:0 5px 20px #102d4f0d}
+    h2{font-size:19px;margin:0 0 6px}.intro{color:#687789;font-size:13px;line-height:1.5;margin:0 0 20px}
+    form{display:grid;gap:14px}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:#3c4e61}
+    input,textarea{width:100%;border:1px solid #d8e0e8;border-radius:9px;padding:12px;font:14px "DM Sans",sans-serif;color:#172536;background:#fff}
+    textarea{min-height:130px;resize:vertical}.dates{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    button{border:0;background:#e5ad45;color:#1d2a38;padding:13px 18px;border-radius:10px;font:700 14px "DM Sans",sans-serif;cursor:pointer}
+    button:disabled{opacity:.6;cursor:wait}.notice{display:none;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.5;margin-bottom:15px}
+    .notice.error{display:block;background:#fff1ef;color:#a53c30;border:1px solid #f3d0ca}.notice.success{display:block;background:#eef8f1;color:#24633c;border:1px solid #cfe8d6}
+    footer{text-align:center;color:#8a97a5;font-size:11px;padding:0 15px 24px}
+    @media(max-width:560px){header{padding:18px}.logo{width:50px;height:50px}main{margin:20px auto;padding:0 12px 35px}.card{padding:18px}.dates{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <img class="logo" src="https://cboceanica.github.io/cbo-louvor/logo-igreja.png" alt="Logo da Comunidade Batista Oceânica">
+    <div class="brand"><small>Comunidade Batista Oceânica</small><h1>Solicitar criação de arte</h1><p>Ministério de Comunicação</p></div>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Nova solicitação</h2>
+      <p class="intro">Preencha os dados abaixo para solicitar uma arte. A equipe de Comunicação receberá seu pedido e dará andamento à criação.</p>
+      <div id="notice" class="notice"></div>
+      <form id="requestForm">
+        <div class="field"><label for="requester">Seu nome</label><input id="requester" name="requester" required maxlength="90" placeholder="Quem está solicitando?"></div>
+        <div class="field"><label for="title">Título da solicitação</label><input id="title" name="title" required maxlength="100" placeholder="Ex.: Divulgação do culto de jovens"></div>
+        <div class="field"><label for="description">Descrição</label><textarea id="description" name="description" required maxlength="2000" placeholder="Informe os detalhes da arte, textos, formatos e outras orientações..."></textarea></div>
+        <div class="dates">
+          <div class="field"><label for="requestDate">Data da solicitação</label><input id="requestDate" name="requestDate" type="date" required></div>
+          <div class="field"><label for="eventDate">Data do evento</label><input id="eventDate" name="eventDate" type="date" required></div>
+        </div>
+        <button id="submitRequest" type="submit">Enviar solicitação</button>
+      </form>
+    </section>
+  </main>
+  <footer>Comunidade Batista Oceânica · Ministério de Comunicação</footer>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyAw9KvbSY55d9x6hPOhyHh10BV2Z1k5vV8",
+      authDomain: "cbo-louvor.firebaseapp.com",
+      projectId: "cbo-louvor",
+      storageBucket: "cbo-louvor.firebasestorage.app",
+      messagingSenderId: "726867806418",
+      appId: "1:726867806418:web:c460c9df85ebc595b0c50b"
+    };
+    const db = getFirestore(initializeApp(firebaseConfig));
+    const form = document.getElementById("requestForm");
+    const notice = document.getElementById("notice");
+    document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA");
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const button = document.getElementById("submitRequest");
+      button.disabled = true; button.textContent = "Enviando...";
+      const data = Object.fromEntries(new FormData(form).entries());
+      try {
+        await addDoc(collection(db, "comunicacao-tarefas"), { ...data, status: "Aberto", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        form.reset();
+        document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA");
+        notice.className = "notice success";
+        notice.textContent = "Solicitação enviada com sucesso! A equipe de Comunicação dará andamento ao pedido.";
+      } catch (error) {
+        notice.className = "notice error";
+        notice.textContent = "Não foi possível enviar sua solicitação. Tente novamente mais tarde.";
+      } finally { button.disabled = false; button.textContent = "Enviar solicitação"; }
+    });
+  </script>
+</body>
+</html>
