@@ -54,7 +54,7 @@
   <main>
     <div class="topbar">
       <div class="intro"><h2>Acompanhamento de tarefas</h2><p>Registre uma solicitação e acompanhe o andamento da criação.</p></div>
-      <div class="top-actions"><button class="team-button" id="manageTeam">Gerenciar equipe</button><button class="primary" id="newTask">＋ Nova solicitação</button></div>
+      <div class="top-actions"><button class="team-button" id="manageTeam">Gerenciar equipe</button><a class="primary" id="newTask" href="https://cboceanica.github.io/comunicacao-tarefas/solicitar.html" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">＋ Nova solicitação</a></div>
     </div>
     <div id="notice" class="notice"></div>
     <section class="board" aria-label="Quadro de tarefas">
@@ -168,7 +168,6 @@
       input.value = "";
     });
     document.getElementById("newMemberName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("addMember").click(); } });
-    document.getElementById("newTask").addEventListener("click", () => openModal());
     document.getElementById("closeModal").addEventListener("click", closeModal);
     document.getElementById("cancel").addEventListener("click", closeModal);
     modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
