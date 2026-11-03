@@ -20,6 +20,7 @@
     .intro h2{font-size:19px;margin:0 0 4px}.intro p{margin:0;color:var(--muted);font-size:13px}
     .primary{border:0;background:var(--gold);color:#1d2a38;padding:12px 18px;border-radius:10px;font:700 14px inherit;cursor:pointer;box-shadow:0 3px 9px #ad7b2633}
     .primary:hover{filter:brightness(.97);transform:translateY(-1px)}
+    .top-actions{display:flex;gap:9px;flex-wrap:wrap}.team-button{border:1px solid #d4dee8;background:#fff;color:#29445f;padding:11px 15px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer}
     .board{display:grid;grid-template-columns:repeat(4,minmax(230px,1fr));gap:14px;align-items:start}
     .column{background:#e9eef3;border:1px solid #e1e7ed;border-radius:14px;padding:12px;min-height:220px}
     .column-head{display:flex;align-items:center;justify-content:space-between;margin:1px 2px 12px}
@@ -38,7 +39,7 @@
     .modal-backdrop{position:fixed;inset:0;background:#0b1d30a8;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}.modal-backdrop.open{display:flex}
     .modal{background:#fff;border-radius:16px;width:min(100%,560px);padding:23px;box-shadow:0 20px 70px #0003;max-height:92vh;overflow:auto}
     .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.modal h2{font-size:20px;margin:0}.close{border:0;background:#eef2f6;border-radius:8px;width:34px;height:34px;font-size:20px;cursor:pointer}
-    form{display:grid;gap:13px}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:#3c4e61}.field input,.field textarea{width:100%;border:1px solid #d8e0e8;border-radius:9px;padding:11px 12px;font:14px "DM Sans",sans-serif;color:var(--ink);background:#fff}.field textarea{min-height:112px;resize:vertical}.dates{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:5px}.secondary{border:1px solid #d9e1e9;background:#fff;border-radius:9px;padding:11px 15px;font-weight:700;cursor:pointer}
+    form{display:grid;gap:13px}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:#3c4e61}.field input,.field textarea,.field select{width:100%;border:1px solid #d8e0e8;border-radius:9px;padding:11px 12px;font:14px "DM Sans",sans-serif;color:var(--ink);background:#fff}.field textarea{min-height:112px;resize:vertical}.team-list{display:grid;gap:8px;margin:12px 0}.team-member{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;border:1px solid #e1e7ed;border-radius:9px;font-size:13px}.remove-member{border:0;background:#fff0ee;color:#a33d32;border-radius:7px;padding:6px 9px;font-weight:700;cursor:pointer}.add-member{display:flex;gap:8px}.add-member input{flex:1;min-width:0;border:1px solid #d8e0e8;border-radius:9px;padding:10px;font:14px "DM Sans",sans-serif}.dates{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:5px}.secondary{border:1px solid #d9e1e9;background:#fff;border-radius:9px;padding:11px 15px;font-weight:700;cursor:pointer}
     .loading{color:#718196;font-size:13px;padding:16px;text-align:center}
     footer{text-align:center;color:#8a97a5;font-size:11px;padding:0 20px 25px}
     @media(max-width:1000px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -53,7 +54,7 @@
   <main>
     <div class="topbar">
       <div class="intro"><h2>Acompanhamento de tarefas</h2><p>Registre uma solicitação e acompanhe o andamento da criação.</p></div>
-      <button class="primary" id="newTask">＋ Nova solicitação</button>
+      <div class="top-actions"><button class="team-button" id="manageTeam">Gerenciar equipe</button><button class="primary" id="newTask">＋ Nova solicitação</button></div>
     </div>
     <div id="notice" class="notice"></div>
     <section class="board" aria-label="Quadro de tarefas">
@@ -72,6 +73,7 @@
         <div class="field"><label for="requester">Nome do solicitante</label><input id="requester" name="requester" required maxlength="90" placeholder="Quem está solicitando?"></div>
         <div class="field"><label for="title">Título</label><input id="title" name="title" required maxlength="100" placeholder="Ex.: Divulgação do culto de jovens"></div>
         <div class="field"><label for="description">Descrição</label><textarea id="description" name="description" required maxlength="2000" placeholder="Informe os detalhes da arte, textos, formatos e outras orientações..."></textarea></div>
+        <div class="field"><label for="servo">Servo responsável pela criação</label><select id="servo" name="servo" required><option value="">Selecione quem ficará responsável</option></select></div>
         <div class="dates">
           <div class="field"><label for="requestDate">Data da solicitação</label><input id="requestDate" name="requestDate" type="date" required></div>
           <div class="field"><label for="eventDate">Data do evento</label><input id="eventDate" name="eventDate" type="date" required></div>
@@ -81,9 +83,19 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="teamModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teamModalTitle">
+      <div class="modal-head"><h2 id="teamModalTitle">Gerenciar equipe</h2><button class="close" id="closeTeamModal" aria-label="Fechar">×</button></div>
+      <p style="font-size:13px;color:#687789;margin:-6px 0 14px">Cadastre ou remova os nomes que aparecerão na seleção de responsável pelas artes.</p>
+      <div class="add-member"><input id="newMemberName" maxlength="60" placeholder="Nome do novo membro"><button class="primary" id="addMember" type="button">Adicionar</button></div>
+      <div id="teamMembers" class="team-list"><div class="loading">Carregando equipe...</div></div>
+      <div class="form-actions"><button type="button" class="secondary" id="doneTeam">Concluir</button></div>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAw9KvbSY55d9x6hPOhyHh10BV2Z1k5vV8",
@@ -97,7 +109,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const tasksRef = collection(db, "comunicacao-tarefas");
+    const teamDoc = doc(db, "comunicacao-equipe", "membros");
+    const defaultTeam = ["Ester", "Pr. Thiago", "Vitão", "Greicy", "Mateus", "Pietro", "Gabriel"];
+    let teamMembers = [...defaultTeam];
+    let teamReady = false;
     const modal = document.getElementById("modal");
+    const teamModal = document.getElementById("teamModal");
     const form = document.getElementById("taskForm");
     const notice = document.getElementById("notice");
     let tasks = [];
@@ -108,6 +125,33 @@
     function hideNotice() { notice.textContent = ""; notice.className = "notice"; }
     function openModal() { hideNotice(); form.reset(); document.getElementById("requestDate").value = new Date().toLocaleDateString("en-CA"); modal.classList.add("open"); document.getElementById("requester").focus(); }
     function closeModal() { modal.classList.remove("open"); }
+    function renderTeam() {
+      const select = document.getElementById("servo");
+      const current = select.value;
+      select.innerHTML = '<option value="">Selecione quem ficará responsável</option>' + teamMembers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+      if (teamMembers.includes(current)) select.value = current;
+      document.getElementById("teamMembers").innerHTML = teamMembers.length
+        ? teamMembers.map((name, i) => `<div class="team-member"><span>${escapeHtml(name)}</span><button class="remove-member" type="button" data-index="${i}">Remover</button></div>`).join("")
+        : '<div class="empty">Nenhum membro cadastrado.</div>';
+      document.querySelectorAll(".remove-member").forEach(button => button.addEventListener("click", () => changeTeam(teamMembers.filter((_, i) => i !== Number(button.dataset.index)))));
+    }
+    async function changeTeam(next) {
+      try { await setDoc(teamDoc, { members: next, updatedAt: serverTimestamp() }); }
+      catch (err) { showNotice("Não foi possível atualizar a equipe. Verifique as regras do Firestore.", "error"); }
+    }
+    document.getElementById("manageTeam").addEventListener("click", () => { teamModal.classList.add("open"); renderTeam(); });
+    document.getElementById("closeTeamModal").addEventListener("click", () => teamModal.classList.remove("open"));
+    document.getElementById("doneTeam").addEventListener("click", () => teamModal.classList.remove("open"));
+    teamModal.addEventListener("click", e => { if (e.target === teamModal) teamModal.classList.remove("open"); });
+    document.getElementById("addMember").addEventListener("click", async () => {
+      const input = document.getElementById("newMemberName");
+      const name = input.value.trim();
+      if (!name) return;
+      if (teamMembers.some(member => member.toLocaleLowerCase("pt-BR") === name.toLocaleLowerCase("pt-BR"))) { showNotice("Esse membro já está cadastrado.", "info"); return; }
+      await changeTeam([...teamMembers, name]);
+      input.value = "";
+    });
+    document.getElementById("newMemberName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("addMember").click(); } });
     document.getElementById("newTask").addEventListener("click", openModal);
     document.getElementById("closeModal").addEventListener("click", closeModal);
     document.getElementById("cancel").addEventListener("click", closeModal);
@@ -126,6 +170,7 @@
             <div class="task-meta">
               <span>◷ <b>Solicitada:</b> ${dateBR(t.requestDate)}</span>
               <span>▣ <b>Evento:</b> ${dateBR(t.eventDate)}</span>
+              <span>✎ <b>Servo:</b> ${escapeHtml(t.servo || "Não definido")}</span>
             </div>
             <div class="task-footer"><span class="requester">Por: ${escapeHtml(t.requester)}</span>
               <select class="status-select" aria-label="Alterar status de ${escapeHtml(t.title)}" data-id="${escapeHtml(t.id)}">
@@ -152,6 +197,13 @@
         showNotice("A solicitação não foi salva. É necessário liberar a leitura e a gravação da coleção comunicacao-tarefas nas regras do Firestore.", "error");
       } finally { submit.disabled = false; submit.textContent = "Enviar solicitação"; }
     });
+
+    onSnapshot(teamDoc, async snapshot => {
+      if (snapshot.exists()) teamMembers = Array.isArray(snapshot.data().members) ? snapshot.data().members : [...defaultTeam];
+      else if (!teamReady) { teamReady = true; await setDoc(teamDoc, { members: defaultTeam, updatedAt: serverTimestamp() }); teamMembers = [...defaultTeam]; }
+      teamReady = true;
+      renderTeam();
+    }, error => showNotice("Não foi possível carregar a equipe. Verifique as regras do Firestore.", "error"));
 
     onSnapshot(query(tasksRef, orderBy("createdAt", "desc")), snapshot => {
       tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
