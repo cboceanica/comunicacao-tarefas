@@ -30,7 +30,7 @@
     .task-title{font-size:14px;font-weight:800;line-height:1.35;margin:0 0 7px;overflow-wrap:anywhere}
     .task-desc{font-size:12px;line-height:1.55;color:#526274;margin:0 0 12px;white-space:pre-wrap;overflow-wrap:anywhere}
     .task-meta{display:grid;gap:5px;border-top:1px solid #edf0f3;padding-top:9px;color:#657487;font-size:11px}
-    .task-meta span{display:flex;align-items:center;gap:6px}.task-meta b{color:#35475a;font-weight:700}
+    .task-meta span{display:flex;align-items:center;gap:6px}.task-meta b{color:#35475a;font-weight:700}.attachment-preview{display:inline-flex;align-items:center;gap:8px;color:#245b83;font-size:11px;font-weight:700;text-decoration:none;margin-top:8px}.attachment-preview img{width:46px;height:46px;object-fit:cover;border-radius:7px;border:1px solid #dce5ed}
     .task-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px}
     .requester{font-size:11px;color:#536579;font-weight:700;overflow-wrap:anywhere}
     .status-select{max-width:100%;border:1px solid #dce3ea;border-radius:7px;padding:7px 22px 7px 8px;background:#f8fafc;color:#26394d;font:600 11px inherit}.delete-task{width:30px;height:30px;flex:none;display:grid;place-items:center;border:1px solid #f0d4d1;border-radius:8px;background:#fff7f6;color:#b34a40;cursor:pointer}.delete-task:hover{background:#fee9e6}.delete-task:disabled{opacity:.5;cursor:wait}.task-footer{flex-wrap:wrap}
@@ -95,7 +95,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, deleteDoc, doc, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref as storageRef, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAw9KvbSY55d9x6hPOhyHh10BV2Z1k5vV8",
@@ -108,6 +109,17 @@
     const statuses = ["Aberto", "Em andamento", "Pendente", "Concluído"];
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const storage = getStorage(app);
+    const deletingAttachments = new Set();
+    async function removeTaskAttachment(task) {
+      if (!task?.attachmentPath || deletingAttachments.has(task.id)) return;
+      deletingAttachments.add(task.id);
+      try {
+        try { await deleteObject(storageRef(storage, task.attachmentPath)); }
+        catch (error) { if (error.code !== "storage/object-not-found") throw error; }
+        await updateDoc(doc(db, "comunicacao-tarefas", task.id), { attachmentPath: deleteField(), attachmentUrl: deleteField(), attachmentName: deleteField(), updatedAt: serverTimestamp() });
+      } finally { deletingAttachments.delete(task.id); }
+    }
     const tasksRef = collection(db, "comunicacao-tarefas");
     const teamDoc = doc(db, "comunicacao-equipe", "membros");
     const defaultTeam = ["Ester", "Pr. Thiago", "Vitão", "Greicy", "Mateus", "Pietro", "Gabriel"];
@@ -183,6 +195,7 @@
           <article class="task">
             <h3 class="task-title">${escapeHtml(t.title)}</h3>
             <p class="task-desc">${escapeHtml(t.description)}</p>
+            ${t.attachmentUrl ? `<a class="attachment-preview" href="${escapeHtml(t.attachmentUrl)}" target="_blank" rel="noopener noreferrer"><img src="${escapeHtml(t.attachmentUrl)}" alt="Imagem de referência"><span>Ver imagem de referência</span></a>` : ""}
             <div class="task-meta">
               <span>◷ <b>Solicitada:</b> ${dateBR(t.requestDate)}</span>
               <span>▣ <b>Evento:</b> ${dateBR(t.eventDate)}</span>
@@ -206,7 +219,7 @@
         const task = tasks.find(item => item.id === id);
         if (!confirm(`Tem certeza de que deseja excluir a solicitação "${task?.title || "sem título"}"? Essa ação não poderá ser desfeita.`)) return;
         e.currentTarget.disabled = true;
-        try { await deleteDoc(doc(db, "comunicacao-tarefas", id)); }
+        try { if (task?.attachmentPath) await removeTaskAttachment(task); await deleteDoc(doc(db, "comunicacao-tarefas", id)); }
         catch (err) { showNotice("Não foi possível excluir a solicitação. Verifique as regras do Firestore.", "error"); e.currentTarget.disabled = false; }
       }));
       document.querySelectorAll(".servo-select").forEach(select => select.addEventListener("change", async e => {
@@ -214,8 +227,14 @@
         catch (err) { showNotice("Não foi possível atribuir o responsável. Verifique as regras do Firestore.", "error"); }
       }));
       document.querySelectorAll(".status-select").forEach(select => select.addEventListener("change", async e => {
-        try { await updateDoc(doc(db, "comunicacao-tarefas", e.target.dataset.id), { status: e.target.value, updatedAt: serverTimestamp() }); }
-        catch (err) { showNotice("Não foi possível atualizar o status. Verifique as regras de acesso do Firestore.", "error"); }
+        const task = tasks.find(item => item.id === e.target.dataset.id);
+        try {
+          await updateDoc(doc(db, "comunicacao-tarefas", e.target.dataset.id), { status: e.target.value, updatedAt: serverTimestamp() });
+          if (e.target.value === "Concluído" && task?.attachmentPath) {
+            try { await removeTaskAttachment(task); showNotice("Tarefa concluída e imagem de referência apagada permanentemente.", "info"); }
+            catch (cleanupError) { showNotice("A tarefa foi concluída, mas não foi possível apagar a imagem. O painel tentará novamente ao ser atualizado.", "error"); }
+          }
+        } catch (err) { showNotice("Não foi possível atualizar o status. Verifique as regras de acesso do Firestore.", "error"); }
       }));
     }
 
@@ -249,7 +268,9 @@
 
     onSnapshot(query(tasksRef, orderBy("createdAt", "desc")), snapshot => {
       tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      render(); hideNotice();
+      render();
+      tasks.filter(task => task.status === "Concluído" && task.attachmentPath).forEach(task => removeTaskAttachment(task).catch(() => showNotice("Há uma imagem de tarefa concluída aguardando exclusão. Verifique as regras do Firebase Storage.", "error")));
+      hideNotice();
     }, error => {
       document.querySelectorAll(".task-list").forEach(el => el.innerHTML = '<div class="empty">Não foi possível carregar as tarefas.</div>');
       showNotice("O quadro está publicado, mas o Firestore ainda precisa permitir leitura e gravação para a coleção comunicacao-tarefas. Depois de ajustar as regras, atualize esta página.", "error");
